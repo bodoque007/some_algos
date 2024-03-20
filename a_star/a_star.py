@@ -2,7 +2,6 @@ import pygame
 import numpy as np
 from queue import PriorityQueue
 import time
-import random
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -11,33 +10,15 @@ BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 N = 30
 M = 30
-WIDTH = 20
-HEIGHT = 20
-MARGIN = 5
+WINDOW_SIZE = [800, 800]
+GRID_SIZE = min(WINDOW_SIZE) // max(N, M)
 
 grid = [[0 for _ in range(N)] for _ in range(M)]
+# Later on used to actually draw the grid onto the screen.
+pixel_array = np.zeros((N, M, 3), dtype=np.uint8)
 
-def initialize_maze(start_row=0, start_col=0, end_row=N - 5, end_col=M - 5):
-    for row in range(N):
-        for col in range(M):
-            if row == start_row and col == start_col:
-                grid[row][col] = 2  # Start cell
-            elif row == end_row and col == end_col:
-                grid[row][col] = 3  # End cell
-            elif row % 2 != 0 and col % 2 != 0:
-                grid[row][col] = 1  # Wall cell
-            else:
-                grid[row][col] = 0  # Path cell
-
-    num_obstacles = random.randint(40, 50)
-    for _ in range(num_obstacles):
-        row = random.randint(0, N - 1)
-        col = random.randint(1, M - 1)
-        if grid[row][col] == 0:
-            grid[row][col] = 1
 
 pygame.init()
-WINDOW_SIZE = [800, 800]
 screen = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("A* Maze Runner")
 clock = pygame.time.Clock()
@@ -52,15 +33,41 @@ def get_color(value):
     }
     return color_map.get(value, BLACK)
 
-def draw_screen():
-    pixel_array = np.zeros((N, M, 3), dtype=np.uint8)
+def draw_obstacle(x, y, start, end, click=1):
+    row = x // GRID_SIZE
+    col = y // GRID_SIZE
+    if 0 <= row < N and 0 <= col < M and (row, col) != start and (row, col) != end:
+        if click == 1:
+            grid[row][col] = 1
+        else:
+            grid[row][col] = 0
 
+def user_draw_maze(start, end):
+    drawing = False 
+    running = True 
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    drawing = True
+                    draw_obstacle(*event.pos, start, end)
+                elif event.button == 3:
+                    draw_obstacle(*event.pos, start, end, 3)
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                drawing = False
+            elif event.type == pygame.MOUSEMOTION and drawing:
+                draw_obstacle(*event.pos, start, end)
+        draw_screen()
+
+def draw_screen():
     for row in range(N):
         for col in range(M):
             pixel_array[row, col] = get_color(grid[row][col])
 
     # Create a surface from the pixel array
-    surface = pygame.surfarray.make_surface(pixel_array.swapaxes(0, 1))
+    surface = pygame.surfarray.make_surface(pixel_array)
 
     # Blit the surface onto the screen
     screen.blit(pygame.transform.scale(surface, WINDOW_SIZE), (0, 0))
@@ -72,12 +79,13 @@ def is_viable_neighbor(neighbor_row, neighbor_col):
     # Checks if neighbor is in between boundaries and not a wall.
     return 0 <= neighbor_row < N and 0 <= neighbor_col < M and grid[neighbor_row][neighbor_col] != 1
     
+# Will be used as heuristic.
 def manhattan_distance(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
 
-def a_star():
-    current = (0, 0)
-    end = (N-5, M-5)
+def a_star(start, end):
+    current = start
+    end = end
 
     g_score = {(i, j): float('inf') for i in range(N + 1) for j in range(M + 1)}
     g_score[current] = 0
@@ -87,8 +95,8 @@ def a_star():
 
 
     open = PriorityQueue()
-    # Open's structure for cell i,j = (f_score_of_ij, manhattan_distance_of_ij, (i, j))
-    # The idea is that we'll always use the cell with the least f_score, and if the f_score of two different cells match, use the one with the least manhattan_distance.
+    # Open's queue structure for cell i,j is (f_score_of_ij, manhattan_distance_of_ij, (i, j))
+    # The idea is that we'll always use the cell with the least f_score, and if the f_score of two different cells are equal, we'll use the one with the least manhattan_distance.
     open.put((f_score[current], manhattan_distance(current[0], current[1], end[0], end[1]), current))
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
@@ -115,33 +123,32 @@ def a_star():
     print("Not found! NOOOOOOOOOO")
 
 
-'''
-BFS Implementation to warm-up.
-def bfs():
-    current = (0, 0)
-    end = (N-5, M-5)
-    queue = deque([current])
-    visited = set()
-    visited.add(current)
+def select_starting_and_ending():
+    start = None
+    end = None
+    selecting = True
 
-    directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-
-    while queue:
-        current = queue.popleft()
-        if current == end:
-            break 
-        visited.add(current)
-
-        grid[current[0]][current[1]] = 4  # Marks visited and paint it blue.
-        for dx, dy in directions:
-            neighbor_row, neighbor_col = current[0] + dx, current[1] + dy
-            if is_viable_neighbor(neighbor_row, neighbor_col, visited):
-                queue.append((neighbor_row, neighbor_col))
-'''
-
+    while selecting:
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                x, y = event.pos
+                row = x // GRID_SIZE
+                col = y // GRID_SIZE
+                if 0 <= row < N and 0 <= col < M:
+                    if start is None:
+                        start = (row, col)
+                        grid[row][col] = 2
+                        print("Starting point selected:", start)
+                    elif end is None and (row, col) != start:
+                        end = (row, col)
+                        grid[row][col] = 3
+                        print("Ending point selected:", end)
+                        selecting = False  # Exit selection mode
+        draw_screen()
+    return start, end
 
 if __name__ == "__main__":
-    initialize_maze()
-    a_star()
+    start, end = select_starting_and_ending()
+    user_draw_maze(start, end)
+    a_star(start, end)
     pygame.quit()
-    
