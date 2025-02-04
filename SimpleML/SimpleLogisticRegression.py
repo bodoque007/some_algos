@@ -49,5 +49,7 @@ class LogisticReg:
 model = LogisticReg(0.01, 500)
 
 X, y = make_classification()
+## Standarizes X input. Remember that in numpy, axis=0 are the columns
+X = (X - np.mean(X, axis=0))/np.std(X, axis=0)
 model.fit(X, y)
 print(f"Final w learned is {model.w}. b learned is {model.b}")
