@@ -9,6 +9,7 @@ for x in (-1, 1):
             points.append(np.array([[x], [y], [z]]))
 
 currentAngle = 0
+rotationSpeedMultiplier = 1
 
 projectionMatrix3dTo2d = np.matrix([
     [1, 0, 0],
@@ -32,6 +33,11 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                rotationSpeedMultiplier += 1
+            if event.key == pygame.K_DOWN and rotationSpeedMultiplier > 1:
+                rotationSpeedMultiplier -= 1
     
     rotationMatrixZ = np.matrix([
         [math.cos(currentAngle), -math.sin(currentAngle), 0],
@@ -67,6 +73,6 @@ while True:
             x2 = int(projectedTo2d2[0, 0] * 100 + width / 2)
             y2 = int(projectedTo2d2[1, 0] * 100 + height / 2)
             pygame.draw.line(screen, BLUE, (x1, y1), (x2, y2), 2)
-    currentAngle += 0.01
+    currentAngle += 0.01 * rotationSpeedMultiplier
     pygame.display.update()
     clock.tick(60)
