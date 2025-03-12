@@ -6,7 +6,7 @@ points = []
 for x in (-1, 1):
     for y in (-1, 1):
         for z in (-1, 1):
-            points.append(np.matrix([x, y, z]))
+            points.append(np.array([[x], [y], [z]]))
 
 currentAngle = 0
 
@@ -25,7 +25,6 @@ BLUE = (0, 0, 255)
 
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
-clock.tick(60)
 
 while True:
     screen.fill(BLACK)
@@ -52,10 +51,11 @@ while True:
 
     rotated_points = []
     for point in points:
-        rotatedInZ = rotationMatrixZ * point.T
-        rotatedInX = rotationMatrixX * rotatedInZ
-        rotatedInY = rotationMatrixY * rotatedInX
-        rotated_points.append(rotatedInY)
+        rotatedInY = rotationMatrixY @ point
+        rotatedInX = rotationMatrixX @ rotatedInY
+        rotatedInZ = rotationMatrixZ @ rotatedInX
+        rotated_points.append(rotatedInZ)
+
 
     for i in range(1, len(rotated_points)):
         for j in range(i):
@@ -67,5 +67,6 @@ while True:
             x2 = int(projectedTo2d2[0, 0] * 100 + width / 2)
             y2 = int(projectedTo2d2[1, 0] * 100 + height / 2)
             pygame.draw.line(screen, BLUE, (x1, y1), (x2, y2), 2)
-    currentAngle += 0.001
+    currentAngle += 0.01
     pygame.display.update()
+    clock.tick(60)
