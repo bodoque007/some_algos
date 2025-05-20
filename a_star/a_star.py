@@ -8,12 +8,22 @@ WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
+PURPLE = (128, 0, 128)
+
+# Cell values
+EMPTY = 0
+WALL = 1
+START = 2
+END = 3
+VISITED = 4
+PATH = 5
+
 N = 30
 M = 30
 WINDOW_SIZE = [800, 800]
 GRID_SIZE = min(WINDOW_SIZE) // max(N, M)
 
-grid = [[0 for _ in range(N)] for _ in range(M)]
+grid = [[EMPTY for _ in range(N)] for _ in range(M)]
 # Later on used to actually draw the grid onto the screen.
 pixel_array = np.zeros((N, M, 3), dtype=np.uint8)
 
@@ -25,22 +35,28 @@ clock = pygame.time.Clock()
 
 def get_color(value):
     color_map = {
-        0: WHITE,
-        1: BLACK,
-        2: GREEN,
-        3: RED,
-        4: BLUE
+        EMPTY: WHITE,
+        WALL: BLACK,
+        START: GREEN,
+        END: RED,
+        VISITED: BLUE,
+        PATH: PURPLE
     }
     return color_map.get(value, BLACK)
+
+def reset_grid():
+    for row in range(N):
+        for col in range(M):
+            grid[row][col] = EMPTY
 
 def draw_obstacle(x, y, start, end, click=1):
     row = x // GRID_SIZE
     col = y // GRID_SIZE
     if 0 <= row < N and 0 <= col < M and (row, col) != start and (row, col) != end:
         if click == 1:
-            grid[row][col] = 1
+            grid[row][col] = WALL
         else:
-            grid[row][col] = 0
+            grid[row][col] = EMPTY
 
 def user_draw_maze(start, end):
     drawing = False 
@@ -83,9 +99,18 @@ def is_viable_neighbor(neighbor_row, neighbor_col):
 def manhattan_distance(x1, y1, x2, y2):
     return abs(x1 - x2) + abs(y1 - y2)
 
+
+def reconstruct_path(came_from, current, start):
+    while current in came_from and current != start:
+        current = came_from[current]
+        if current != start:  # Don't mark start point as path
+            grid[current[0]][current[1]] = PATH
+        draw_screen()
+        time.sleep(0.02)
+
+
 def a_star(start, end):
     current = start
-    end = end
 
     g_score = {(i, j): float('inf') for i in range(N + 1) for j in range(M + 1)}
     g_score[current] = 0
@@ -99,6 +124,7 @@ def a_star(start, end):
     # The idea is that we'll always use the cell with the least f_score, and if the f_score of two different cells are equal, we'll use the one with the least manhattan_distance.
     open.put((f_score[current], manhattan_distance(current[0], current[1], end[0], end[1]), current))
     directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    came_from = {}  # Used only to reconstruct path
 
     while not open.empty():
         draw_screen()
@@ -106,20 +132,26 @@ def a_star(start, end):
 
         if current == end:
             print("Found!")
-            return
+            reconstruct_path(came_from, current, start)            
+            return True
 
-        grid[current[0]][current[1]] = 4  # Marks visited and paints it blue.
+        if current != start and current != end:
+            grid[current[0]][current[1]] = VISITED
+
         for dx, dy in directions:
             neighbor_row, neighbor_col = current[0] + dx, current[1] + dy
+
             if is_viable_neighbor(neighbor_row, neighbor_col):
                 # The following updates the score for the neighbor.
                 tentative_gScore = g_score[current] + 1
                 temp_f_score = tentative_gScore + manhattan_distance(neighbor_row, neighbor_col, end[0], end[1])
 
                 if temp_f_score < f_score[(neighbor_row, neighbor_col)]:
+                    came_from[(neighbor_row, neighbor_col)] = current
                     g_score[(neighbor_row, neighbor_col)] = tentative_gScore
                     f_score[(neighbor_row, neighbor_col)] = temp_f_score
                     open.put((temp_f_score, manhattan_distance(neighbor_row, neighbor_col, end[0], end[1]), (neighbor_row, neighbor_col)))
+
     print("Not found! NOOOOOOOOOO")
 
 
@@ -137,18 +169,29 @@ def select_starting_and_ending():
                 if 0 <= row < N and 0 <= col < M:
                     if start is None:
                         start = (row, col)
-                        grid[row][col] = 2
+                        grid[row][col] = START
                         print("Starting point selected:", start)
                     elif end is None and (row, col) != start:
                         end = (row, col)
-                        grid[row][col] = 3
+                        grid[row][col] = END
                         print("Ending point selected:", end)
                         selecting = False  # Exit selection mode
         draw_screen()
     return start, end
 
 if __name__ == "__main__":
+    running = True
     start, end = select_starting_and_ending()
     user_draw_maze(start, end)
     a_star(start, end)
-    pygame.quit()
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                # Reset grid
+                reset_grid()
+                start, end = select_starting_and_ending()
+                user_draw_maze(start, end)
+                a_star(start, end)
+        draw_screen()
