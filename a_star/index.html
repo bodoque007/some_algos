@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A* Maze Runner</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎯 A* Maze Runner</h1>
+
+      <div class="controls">
+        <button id="selectPointsBtn" class="primary-btn">
+          Select Start/End
+        </button>
+        <button id="drawMazeBtn" class="secondary-btn" disabled>
+          Draw Maze
+        </button>
+        <button id="runAStarBtn" class="success-btn" disabled>Run A*</button>
+        <button id="resetBtn" class="primary-btn">Reset</button>
+      </div>
+
+      <div class="status" id="status">Click "Select Start/End" to begin</div>
+
+      <canvas id="gameCanvas" width="800" height="800"></canvas>
+
+      <div class="instructions">
+        <h3>📋 Instructions:</h3>
+        <ul>
+          <li>
+            <strong>Select Start/End:</strong> Click once for start point
+            (green), click again for end point (red)
+          </li>
+          <li>
+            <strong>Draw Maze:</strong> Left click and drag to draw walls, right
+            click to erase walls
+          </li>
+          <li>
+            <strong>Run A*:</strong> Watch the algorithm find the shortest path!
+          </li>
+          <li><strong>Reset:</strong> Clear everything and start over</li>
+        </ul>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
